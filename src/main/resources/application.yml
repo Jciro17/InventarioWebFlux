@@ -5,6 +5,11 @@ spring:
   application:
     name: inventario-webflux
 
+messageucolab:
+  backend-url: ${MESSAGEUCOLAB_BACKEND:http://localhost:8000}
+  application-id: ${MESSAGEUCOLAB_APPLICATION_ID:}
+  environment-id: ${MESSAGEUCOLAB_ENVIRONMENT_ID:}
+
 logging:
   level:
     co.edu.uco: DEBUG

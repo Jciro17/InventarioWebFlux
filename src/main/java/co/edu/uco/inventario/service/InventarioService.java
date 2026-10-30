@@ -1,21 +1,25 @@
 package co.edu.uco.inventario.service;
 
-import co.edu.uco.inventario.model.Aviso;
+import co.edu.uco.inventario.messages.MessageUcoLabClient;
+import co.edu.uco.inventario.messages.ResolvedMessage;
 import co.edu.uco.inventario.model.Producto;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class InventarioService {
 
+    private final MessageUcoLabClient msgClient;
     private final List<Producto> productos = new CopyOnWriteArrayList<>();
 
-    public InventarioService() {
+    public InventarioService(MessageUcoLabClient msgClient) {
+        this.msgClient = msgClient;
         productos.add(new Producto("Mouse inalámbrico",  "MOUSE-001", 12, 5));
         productos.add(new Producto("Teclado mecánico",   "TECLADO-002", 3, 5));
         productos.add(new Producto("Monitor 24\"",        "MONITOR-003", 0, 2));
@@ -32,69 +36,57 @@ public class InventarioService {
         );
     }
 
-    public Mono<Aviso> guardar(Producto producto) {
-        if (esInvalido(producto)) return Mono.just(datosIncompletos());
+    public Mono<ResolvedMessage> guardar(Producto producto) {
+        if (esInvalido(producto)) return msgClient.get("MSG_INVALID");
         productos.add(producto);
-        return Mono.just(new Aviso("Producto guardado",
-            "El producto " + producto.getNombre() + " se guardó correctamente."));
+        return msgClient.get("MSG_PRODSAVED", Map.of("nombre", producto.getNombre()));
     }
 
-    public Mono<Aviso> actualizar(String id, Producto datos) {
-        if (esInvalido(datos)) return Mono.just(datosIncompletos());
+    public Mono<ResolvedMessage> actualizar(String id, Producto datos) {
+        if (esInvalido(datos)) return msgClient.get("MSG_INVALID");
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(noEncontrado());
+        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
+                "El producto con id " + id + " no existe.", "fallback"));
         Producto p = found.get();
         p.setNombre(datos.getNombre());
         p.setSku(datos.getSku());
         p.setCantidad(datos.getCantidad());
         p.setStockMinimo(datos.getStockMinimo());
-        return Mono.just(actualizado(p));
+        return msgClient.get("MSG_PRODUPD", Map.of("nombre", p.getNombre()));
     }
 
-    public Mono<Aviso> eliminar(String id) {
+    public Mono<ResolvedMessage> eliminar(String id) {
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(noEncontrado());
+        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
+                "El producto con id " + id + " no existe.", "fallback"));
         Producto p = found.get();
         productos.removeIf(x -> x.getId().equals(id));
-        return Mono.just(new Aviso("Producto eliminado",
-            "El producto " + p.getNombre() + " se retiró del inventario."));
+        return msgClient.get("MSG_PRODDEL", Map.of("nombre", p.getNombre()));
     }
 
-    public Mono<Aviso> salida(String id, int cantidad) {
+    public Mono<ResolvedMessage> salida(String id, int cantidad) {
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(noEncontrado());
+        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
+                "El producto no existe.", "fallback"));
         Producto p = found.get();
         if (p.getCantidad() < cantidad) {
-            return Mono.just(new Aviso("Sin existencias suficientes",
-                "No hay unidades de " + p.getNombre() + " para registrar la salida."));
+            return msgClient.get("MSG_NOSTOCK", Map.of("nombre", p.getNombre()));
         }
         p.setCantidad(p.getCantidad() - cantidad);
         if (p.isStockBajo()) {
-            return Mono.just(new Aviso("Stock por debajo del mínimo",
-                "Quedan " + p.getCantidad() + " unidades de " + p.getNombre() + ". Considera reabastecer."));
+            return msgClient.get("MSG_STOCKLOW",
+                Map.of("nombre", p.getNombre(), "cantidad", String.valueOf(p.getCantidad())));
         }
-        return Mono.just(actualizado(p));
+        return msgClient.get("MSG_PRODUPD", Map.of("nombre", p.getNombre()));
     }
 
-    public Mono<Aviso> entrada(String id, int cantidad) {
+    public Mono<ResolvedMessage> entrada(String id, int cantidad) {
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(noEncontrado());
+        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
+                "El producto no existe.", "fallback"));
         Producto p = found.get();
         p.setCantidad(p.getCantidad() + cantidad);
-        return Mono.just(actualizado(p));
-    }
-
-    private static Aviso actualizado(Producto p) {
-        return new Aviso("Producto actualizado", "Los datos de " + p.getNombre() + " se actualizaron correctamente.");
-    }
-
-    private static Aviso datosIncompletos() {
-        return new Aviso("Datos del producto incompletos",
-            "Revisa nombre, SKU, cantidad y stock mínimo antes de guardar.");
-    }
-
-    private static Aviso noEncontrado() {
-        return new Aviso("Producto no encontrado", "El producto indicado no existe.");
+        return msgClient.get("MSG_PRODUPD", Map.of("nombre", p.getNombre()));
     }
 
     private boolean esInvalido(Producto p) {

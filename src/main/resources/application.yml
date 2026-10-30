@@ -1,0 +1,11 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: inventario-webflux
+
+logging:
+  level:
+    co.edu.uco: DEBUG
+    org.springframework.web.reactive: WARN

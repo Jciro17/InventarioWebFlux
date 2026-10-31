@@ -2,6 +2,8 @@ package co.edu.uco.inventario.service;
 
 import co.edu.uco.inventario.model.Aviso;
 import co.edu.uco.inventario.model.Producto;
+import co.edu.uco.messageucolab.client.api.MessageReader;
+import co.edu.uco.messageucolab.client.api.model.MessageDetails;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -14,8 +16,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class InventarioService {
 
     private final List<Producto> productos = new CopyOnWriteArrayList<>();
+    private final MessageReader messageReader;
 
-    public InventarioService() {
+    public InventarioService(MessageReader messageReader) {
+        this.messageReader = messageReader;
         productos.add(new Producto("Mouse inalámbrico",  "MOUSE-001", 12, 5));
         productos.add(new Producto("Teclado mecánico",   "TECLADO-002", 3, 5));
         productos.add(new Producto("Monitor 24\"",        "MONITOR-003", 0, 2));
@@ -32,11 +36,12 @@ public class InventarioService {
         );
     }
 
-    public Mono<Aviso> guardar(Producto producto) {
-        if (esInvalido(producto)) return Mono.just(datosIncompletos());
+    public Mono<MessageDetails> guardar(Producto producto) {
+        if (esInvalido(producto)){
+            return messageReader.getDetails("MSG_PRUEBA");
+        }
         productos.add(producto);
-        return Mono.just(new Aviso("Producto guardado",
-            "El producto " + producto.getNombre() + " se guardó correctamente."));
+        return  messageReader.getDetails("MSG_PRUEBA");
     }
 
     public Mono<Aviso> actualizar(String id, Producto datos) {

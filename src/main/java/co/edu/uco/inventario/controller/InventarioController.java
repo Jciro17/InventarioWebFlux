@@ -3,6 +3,7 @@ package co.edu.uco.inventario.controller;
 import co.edu.uco.inventario.model.Aviso;
 import co.edu.uco.inventario.model.Producto;
 import co.edu.uco.inventario.service.InventarioService;
+import co.edu.uco.messageucolab.client.api.model.MessageDetails;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,7 +24,7 @@ public class InventarioController {
     }
 
     @PostMapping("/productos")
-    public Mono<Aviso> crear(@RequestBody Producto producto) {
+    public Mono<MessageDetails> crear(@RequestBody Producto producto) {
         return inventarioService.guardar(producto);
     }
 

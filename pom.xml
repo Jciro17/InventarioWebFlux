@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <version>4.0.0</version>
         <relativePath/>
     </parent>
 
@@ -17,8 +17,15 @@
     <description>Aplicación de gestión de inventario con WebFlux</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>25</java.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/CamiloGarcia09/MessageUcolab--Backend</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <dependency>
@@ -43,6 +50,11 @@
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>co.edu.uco</groupId>
+            <artifactId>messageucolab-spring-boot-starter</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 

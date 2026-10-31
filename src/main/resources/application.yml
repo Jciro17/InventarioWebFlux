@@ -9,3 +9,9 @@ logging:
   level:
     co.edu.uco: DEBUG
     org.springframework.web.reactive: WARN
+
+
+messageucolab:
+  url: ${MESSAGEUCOLAB_URL:http://localhost:8000}
+  application-id: ${MESSAGEUCOLAB_APPLICATION_ID:6f2a812a-1027-418a-8ef3-c15c9ce41c53}
+  environment-id: ${MESSAGEUCOLAB_ENVIRONMENT_ID:25edbf79-a240-404e-83af-f9b3eae631c6}

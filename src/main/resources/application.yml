@@ -5,10 +5,20 @@ spring:
   application:
     name: inventario-webflux
 
+# Cliente de MessageUcoLab. La aplicación y el ambiente los deduce MessageUcoLab del client_id de la identidad.
 messageucolab:
-  backend-url: ${MESSAGEUCOLAB_BACKEND:http://localhost:8000}
-  application-id: ${MESSAGEUCOLAB_APPLICATION_ID:}
-  environment-id: ${MESSAGEUCOLAB_ENVIRONMENT_ID:}
+  url: ${MESSAGEUCOLAB_URL:http://localhost:8000}
+
+security:
+  # Esta demo no protege sus propias rutas con el PEP; solo consume MessageUcoLab.
+  enabled: false
+  pep:
+    # Identidad de servicio de Inventario. El client_id y el client_secret llegan desde Doppler.
+    service-identity:
+      enabled: true
+      token-uri: ${KEYCLOAK_TOKEN_URI:http://keycloak.localhost:19090/realms/security-baseline/protocol/openid-connect/token}
+      client-id: ${MESSAGEUCOLAB_CLIENT_ID:}
+      client-secret: ${MESSAGEUCOLAB_CLIENT_SECRET:}
 
 logging:
   level:

@@ -23,12 +23,15 @@ donde `source` es `api` (MessageUcoLab) o `fallback` (respaldo).
 
 ## Ejecutar
 
-Inventario necesita el `applicationId` y el `environmentId` de su aplicación en MessageUcoLab (guía,
-paso 7). No son secretos, pero cambian en cada máquina:
+Inventario consume MessageUcoLab con su identidad de servicio. Crea la identidad en el componente de
+seguridad, pide acceso a las rutas de consumo y pide al propietario en MessageUcoLab que asocie su
+Client ID al ambiente (**Identidades de servicio**). MessageUcoLab deduce la aplicación y el ambiente del
+token, así que no se configuran identificadores. El Client ID y el secreto llegan por variables de entorno,
+nunca en un archivo versionado:
 
 ```bat
-set MESSAGEUCOLAB_APPLICATION_ID=<tu applicationId>
-set MESSAGEUCOLAB_ENVIRONMENT_ID=<tu environmentId>
+set MESSAGEUCOLAB_CLIENT_ID=<client id de la identidad>
+set MESSAGEUCOLAB_CLIENT_SECRET=<secreto de la identidad>
 run.bat
 ```
 

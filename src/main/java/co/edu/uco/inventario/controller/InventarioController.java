@@ -1,10 +1,13 @@
 package co.edu.uco.inventario.controller;
 
+import co.edu.uco.inventario.messages.MessageCatalog;
 import co.edu.uco.inventario.messages.MessageUcoLabClient;
 import co.edu.uco.inventario.messages.ResolvedMessage;
 import co.edu.uco.inventario.model.Producto;
 import co.edu.uco.inventario.service.InventarioService;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -16,7 +19,7 @@ import java.util.Map;
 public class InventarioController {
 
     private static final List<String> MSG_CODES = List.of(
-        "MSG_PRODSAVED", "MSG_PRODUPD", "MSG_PRODDEL", "MSG_STOCKLOW", "MSG_NOSTOCK", "MSG_INVALID");
+        "MSG_PRODSAVED", "MSG_PRODUPD", "MSG_PRODDEL", "MSG_STOCKLOW", "MSG_NOSTOCK", "MSG_INVALID", "MSG_AGOTADO");
 
     private final InventarioService   inventarioService;
     private final MessageUcoLabClient msgClient;
@@ -62,6 +65,19 @@ public class InventarioController {
     @GetMapping("/mensajes/estado")
     public Flux<ResolvedMessage> estado() {
         return Flux.fromIterable(MSG_CODES).concatMap(msgClient::check);
+    }
+
+    /**
+     * Texto de un mensaje para la pantalla. El front no llama a MessageUcoLab: el backend lo resuelve con
+     * su identidad de servicio y los parámetros de la consulta reemplazan los marcadores {…}.
+     * Solo se resuelven los códigos de Inventario, para no exponer el catálogo completo.
+     */
+    @GetMapping("/mensajes/{code}")
+    public Mono<ResolvedMessage> mensaje(@PathVariable String code, @RequestParam Map<String, String> vars) {
+        if (!MessageCatalog.FALLBACKS.containsKey(code)) {
+            return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no definido en Inventario"));
+        }
+        return msgClient.get(code, vars);
     }
 
     @PostMapping("/mensajes/limpiar-cache")

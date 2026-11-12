@@ -1,12 +1,10 @@
 package co.edu.uco.inventario.messages;
 
-import co.edu.uco.inventario.config.MessageUcoLabProperties;
-import com.fasterxml.jackson.databind.JsonNode;
+import co.edu.uco.messageucolab.client.api.MessageReader;
+import co.edu.uco.messageucolab.client.api.exception.MessageClientResponseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -14,12 +12,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Cliente reactivo para MessageUcoLab.
+ * Mensajes de Inventario resueltos con MessageUcoLab.
  *
- *   - Llama a la ruta pública GET /messageucolab/v1/public/messages/MSG_XXXX
- *   - Envía los encabezados X-Application-Id y X-Environment-Id; no necesita sesión
+ *   - Consulta con el {@link MessageReader} del cliente de MessageUcoLab, que llama a
+ *     GET /messageucolab/v1/messages/consumer con el token de la identidad de servicio de Inventario
  *   - Caché en memoria 5 minutos
- *   - Fallback automático al catálogo local si el servicio falla
+ *   - Respaldo automático al catálogo local si MessageUcoLab falla o no autoriza la identidad
  *   - Nunca lanza excepción al consumidor
  */
 @Service
@@ -27,18 +25,15 @@ public class MessageUcoLabClient {
 
     private static final Logger log = LoggerFactory.getLogger(MessageUcoLabClient.class);
 
-    private static final Duration TIMEOUT     = Duration.ofSeconds(4);
+    private static final Duration TIMEOUT      = Duration.ofSeconds(4);
     private static final long     CACHE_TTL_MS = 5 * 60 * 1_000L;
     private static final long     MISS_TTL_MS  = 30 * 1_000L;
 
-    private final WebClient               webClient;
-    private final MessageUcoLabProperties props;
+    private final MessageReader messageReader;
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public MessageUcoLabClient(WebClient messageUcoLabWebClient,
-                               MessageUcoLabProperties props) {
-        this.webClient = messageUcoLabWebClient;
-        this.props     = props;
+    public MessageUcoLabClient(MessageReader messageReader) {
+        this.messageReader = messageReader;
     }
 
     public Mono<ResolvedMessage> get(String code, Map<String, String> vars) {
@@ -68,21 +63,13 @@ public class MessageUcoLabClient {
     }
 
     private Mono<ResolvedMessage> fetch(String code) {
-        return webClient.get()
-                .uri("/messageucolab/v1/public/messages/{code}", code)
-                .header("X-Application-Id", props.getApplicationId())
-                .header("X-Environment-Id", props.getEnvironmentId())
-                .retrieve()
-                .bodyToMono(JsonNode.class)
+        return messageReader.getDetails(code)
                 .timeout(TIMEOUT)
-                .map(json -> new ResolvedMessage(
-                        code,
-                        json.path("title").asText(code),
-                        json.path("content").asText(code),
-                        "api"))
+                .map(details -> new ResolvedMessage(code, details.title(), details.content(), "api"))
+                .switchIfEmpty(Mono.fromSupplier(() -> fallback(code, "Sin respuesta")))
                 .onErrorResume(ex -> {
-                    String errorMsg = ex instanceof WebClientResponseException wcex
-                            ? "HTTP " + wcex.getStatusCode().value()
+                    String errorMsg = ex instanceof MessageClientResponseException response
+                            ? "HTTP " + response.getStatusCode()
                             : ex.getClass().getSimpleName() + ": " + ex.getMessage();
                     log.warn("[MessageUcoLab] {} -> fallback ({})", code, errorMsg);
                     return Mono.just(fallback(code, errorMsg));

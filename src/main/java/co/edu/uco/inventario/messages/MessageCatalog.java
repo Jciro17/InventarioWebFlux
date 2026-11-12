@@ -23,6 +23,8 @@ public final class MessageCatalog {
             "No hay unidades de {nombre} para registrar la salida.")),
         Map.entry("MSG_STOCKOK", new Fallback("Stock normalizado",
             "El stock de {nombre} volvió al nivel mínimo requerido ({cantidad} unidades).")),
+        Map.entry("MSG_AGOTADO", new Fallback("Producto agotado",
+            "{nombre} está agotado.")),
         Map.entry("MSG_STOCKZERO", new Fallback("Producto agotado",
             "{nombre} quedó sin unidades. Genera una orden de compra.")),
         Map.entry("MSG_ENTRADA_OK", new Fallback("Entrada registrada",

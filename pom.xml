@@ -56,6 +56,12 @@
             <artifactId>messageucolab-spring-boot-starter</artifactId>
             <version>0.1.0-SNAPSHOT</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.pulsar</groupId>
+            <artifactId>pulsar-client</artifactId>
+            <version>3.2.2</version>
+        </dependency>
     </dependencies>
 
     <build>

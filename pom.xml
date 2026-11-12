@@ -3,10 +3,11 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.0</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -14,16 +15,23 @@
     <artifactId>inventario-webflux</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>InventarioWebFlux</name>
-    <description>Aplicación de gestión de inventario con WebFlux</description>
+    <description>App de inventario de prueba — consume MessageUcoLab con su identidad de servicio</description>
 
     <properties>
         <java.version>25</java.version>
+        <messageucolab-client.version>0.1.0-SNAPSHOT</messageucolab-client.version>
+        <security-pep-starter.version>0.1.4</security-pep-starter.version>
     </properties>
 
+    <!-- Las credenciales de lectura de GitHub Packages van en settings.xml, nunca en el POM. -->
     <repositories>
         <repository>
-            <id>github</id>
+            <id>github-messageucolab</id>
             <url>https://maven.pkg.github.com/CamiloGarcia09/MessageUcolab--Backend</url>
+        </repository>
+        <repository>
+            <id>github-seguridad</id>
+            <url>https://maven.pkg.github.com/seguridad-uco/securitybaseline</url>
         </repository>
     </repositories>
 
@@ -33,13 +41,14 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
+            <groupId>co.edu.uco</groupId>
+            <artifactId>messageucolab-spring-boot-starter</artifactId>
+            <version>${messageucolab-client.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <groupId>co.edu.uco</groupId>
+            <artifactId>security-pep-integration-spring-boot-starter</artifactId>
+            <version>${security-pep-starter.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

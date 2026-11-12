@@ -1,21 +1,32 @@
 package co.edu.uco.inventario.controller;
 
-import co.edu.uco.inventario.model.Aviso;
+import co.edu.uco.inventario.messages.MessageCatalog;
+import co.edu.uco.inventario.messages.MessageUcoLabClient;
+import co.edu.uco.inventario.messages.ResolvedMessage;
 import co.edu.uco.inventario.model.Producto;
 import co.edu.uco.inventario.service.InventarioService;
-import co.edu.uco.messageucolab.client.api.model.MessageDetails;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
 public class InventarioController {
 
-    private final InventarioService inventarioService;
+    private static final List<String> MSG_CODES = List.of(
+        "MSG_PRODSAVED", "MSG_PRODUPD", "MSG_PRODDEL", "MSG_STOCKLOW", "MSG_NOSTOCK", "MSG_INVALID", "MSG_AGOTADO");
 
-    public InventarioController(InventarioService inventarioService) {
+    private final InventarioService   inventarioService;
+    private final MessageUcoLabClient msgClient;
+
+    public InventarioController(InventarioService inventarioService, MessageUcoLabClient msgClient) {
         this.inventarioService = inventarioService;
+        this.msgClient         = msgClient;
     }
 
     @GetMapping("/productos")
@@ -24,27 +35,54 @@ public class InventarioController {
     }
 
     @PostMapping("/productos")
-    public Mono<MessageDetails> crear(@RequestBody Producto producto) {
+    public Mono<ResolvedMessage> crear(@RequestBody Producto producto) {
         return inventarioService.guardar(producto);
     }
 
     @PutMapping("/productos/{id}")
-    public Mono<Aviso> actualizar(@PathVariable String id, @RequestBody Producto datos) {
+    public Mono<ResolvedMessage> actualizar(@PathVariable String id,
+                                            @RequestBody Producto datos) {
         return inventarioService.actualizar(id, datos);
     }
 
     @DeleteMapping("/productos/{id}")
-    public Mono<Aviso> eliminar(@PathVariable String id) {
+    public Mono<ResolvedMessage> eliminar(@PathVariable String id) {
         return inventarioService.eliminar(id);
     }
 
     @PostMapping("/productos/{id}/salida")
-    public Mono<Aviso> salida(@PathVariable String id, @RequestParam(defaultValue = "1") int cantidad) {
+    public Mono<ResolvedMessage> salida(@PathVariable String id,
+                                        @RequestParam(defaultValue = "1") int cantidad) {
         return inventarioService.salida(id, cantidad);
     }
 
     @PostMapping("/productos/{id}/entrada")
-    public Mono<Aviso> entrada(@PathVariable String id, @RequestParam(defaultValue = "1") int cantidad) {
+    public Mono<ResolvedMessage> entrada(@PathVariable String id,
+                                         @RequestParam(defaultValue = "1") int cantidad) {
         return inventarioService.entrada(id, cantidad);
+    }
+
+    @GetMapping("/mensajes/estado")
+    public Flux<ResolvedMessage> estado() {
+        return Flux.fromIterable(MSG_CODES).concatMap(msgClient::check);
+    }
+
+    /**
+     * Texto de un mensaje para la pantalla. El front no llama a MessageUcoLab: el backend lo resuelve con
+     * su identidad de servicio y los parámetros de la consulta reemplazan los marcadores {…}.
+     * Solo se resuelven los códigos de Inventario, para no exponer el catálogo completo.
+     */
+    @GetMapping("/mensajes/{code}")
+    public Mono<ResolvedMessage> mensaje(@PathVariable String code, @RequestParam Map<String, String> vars) {
+        if (!MessageCatalog.FALLBACKS.containsKey(code)) {
+            return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no definido en Inventario"));
+        }
+        return msgClient.get(code, vars);
+    }
+
+    @PostMapping("/mensajes/limpiar-cache")
+    public Mono<Map<String, String>> limpiarCache() {
+        msgClient.clearCache();
+        return Mono.just(Map.of("status", "ok", "message", "Cache limpiada correctamente"));
     }
 }

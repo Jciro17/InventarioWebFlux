@@ -28,14 +28,10 @@ security:
     service-identity:
       enabled: true
       token-uri: ${KEYCLOAK_TOKEN_URI:http://keycloak.localhost:19090/realms/security-baseline/protocol/openid-connect/token}
-      client-id: ${MESSAGEUCOLAB_CLIENT_ID:svc-403c6cfc-8f89-4299-87e4-a53ef72228fc-miapp-a-messageucolab-dev}
-      client-secret: ${MESSAGEUCOLAB_CLIENT_SECRET:2BzjPE0ViOOWxfeAUew3N1o3aJG1x9i_Mz03z5FjR9c}
+      client-id: ${MESSAGEUCOLAB_CLIENT_ID:}
+      client-secret: ${MESSAGEUCOLAB_CLIENT_SECRET:}
 
 logging:
   level:
     co.edu.uco: DEBUG
     org.springframework.web.reactive: WARN
-
-
-
-

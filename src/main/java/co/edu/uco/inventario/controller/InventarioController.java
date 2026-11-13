@@ -64,8 +64,8 @@ public class InventarioController {
     }
 
     @GetMapping("/mensajes/estado")
-    public Flux<ResolvedMessage> estado() {
-        return Flux.fromIterable(MSG_CODES).concatMap(msgClient::check);
+    public Mono<List<ResolvedMessage>> estado() {
+        return Flux.fromIterable(MSG_CODES).concatMap(msgClient::check).collectList();
     }
 
     /**
@@ -75,7 +75,7 @@ public class InventarioController {
      */
     @GetMapping("/mensajes/{code}")
     public Mono<ResolvedMessage> mensaje(@PathVariable String code, @RequestParam Map<String, String> vars) {
-        if (!MessageCatalog.FALLBACKS.containsKey(code)) {
+        if (!MessageCatalog.CODES.contains(code)) {
             return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Mensaje no definido en Inventario"));
         }
         return msgClient.get(code, vars);

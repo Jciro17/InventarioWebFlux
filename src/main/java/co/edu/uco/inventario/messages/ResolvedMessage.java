@@ -16,12 +16,6 @@ public class ResolvedMessage {
         this.source = source;
     }
 
-    public static ResolvedMessage fallback(String code, String title, String content, String errorMsg) {
-        ResolvedMessage m = new ResolvedMessage(code, title, content, "fallback");
-        m.error = errorMsg;
-        return m;
-    }
-
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
     public String getTitle() { return title; }

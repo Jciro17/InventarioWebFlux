@@ -29,11 +29,11 @@
     <!-- Las credenciales de lectura de GitHub Packages van en settings.xml, nunca en el POM. -->
     <repositories>
         <repository>
-            <id>github</id>
+            <id>github-messageucolab</id>
             <url>https://maven.pkg.github.com/CamiloGarcia09/MessageUcolab--Backend</url>
         </repository>
         <repository>
-            <id>github</id>
+            <id>github-seguridad</id>
             <url>https://maven.pkg.github.com/seguridad-uco/securitybaseline</url>
         </repository>
     </repositories>

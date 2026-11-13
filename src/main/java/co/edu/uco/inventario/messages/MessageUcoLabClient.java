@@ -1,33 +1,23 @@
 package co.edu.uco.inventario.messages;
 
 import co.edu.uco.messageucolab.client.api.MessageReader;
-import co.edu.uco.messageucolab.client.api.exception.MessageClientResponseException;
+import co.edu.uco.messageucolab.client.api.model.MessageDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Mensajes de Inventario resueltos con MessageUcoLab.
- *
- *   - Consulta con el {@link MessageReader} del cliente de MessageUcoLab, que llama a
- *     GET /messageucolab/v1/messages/consumer con el token de la identidad de servicio de Inventario
- *   - Caché en memoria 5 minutos
- *   - Respaldo automático al catálogo local si MessageUcoLab falla o no autoriza la identidad
- *   - Nunca lanza excepción al consumidor
- */
 @Service
 public class MessageUcoLabClient {
 
     private static final Logger log = LoggerFactory.getLogger(MessageUcoLabClient.class);
 
-    private static final Duration TIMEOUT      = Duration.ofSeconds(4);
-    private static final long     CACHE_TTL_MS = 5 * 60 * 1_000L;
-    private static final long     MISS_TTL_MS  = 30 * 1_000L;
+    private static final long CACHE_TTL_MS = 5 * 60 * 1_000L;
 
     private final MessageReader messageReader;
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
@@ -42,14 +32,23 @@ public class MessageUcoLabClient {
             return Mono.just(applyVars(cached.message, vars));
         }
         return fetch(code).map(msg -> {
-            long ttl = "api".equals(msg.getSource()) ? CACHE_TTL_MS : MISS_TTL_MS;
-            cache.put(code, new CacheEntry(msg, ttl));
+            cache.put(code, new CacheEntry(msg, CACHE_TTL_MS));
             return applyVars(msg, vars);
         });
     }
 
     public Mono<ResolvedMessage> get(String code) {
         return get(code, Map.of());
+    }
+
+    /** Consulta MessageReader sin caché local y sustituye las variables de la respuesta. */
+    public Mono<ResolvedMessage> getFresh(String code, Map<String, String> vars) {
+        return fetch(code).map(message -> applyVars(message, vars));
+    }
+
+    /** Conserva el detalle del SDK sin usar la caché local, con las variables resueltas. */
+    public Mono<MessageDetails> getFreshDetails(String code, Map<String, String> vars) {
+        return readDetails(code).map(details -> applyVars(details, vars));
     }
 
     /** Consulta sin caché, para comprobar la conexión. */
@@ -63,24 +62,30 @@ public class MessageUcoLabClient {
     }
 
     private Mono<ResolvedMessage> fetch(String code) {
-        return messageReader.getDetails(code)
-                .timeout(TIMEOUT)
-                .map(details -> new ResolvedMessage(code, details.title(), details.content(), "api"))
-                .switchIfEmpty(Mono.fromSupplier(() -> fallback(code, "Sin respuesta")))
-                .onErrorResume(ex -> {
-                    String errorMsg = ex instanceof MessageClientResponseException response
-                            ? "HTTP " + response.getStatusCode()
-                            : ex.getClass().getSimpleName() + ": " + ex.getMessage();
-                    log.warn("[MessageUcoLab] {} -> fallback ({})", code, errorMsg);
-                    return Mono.just(fallback(code, errorMsg));
-                });
+        return readDetails(code)
+                .map(details -> new ResolvedMessage(code, details.title(), details.content(), "api"));
     }
 
-    private ResolvedMessage fallback(String code, String errorMsg) {
-        MessageCatalog.Fallback fb = MessageCatalog.FALLBACKS.getOrDefault(
-            code, new MessageCatalog.Fallback(code, code)
+    private Mono<MessageDetails> readDetails(String code) {
+        return messageReader.getDetails(code)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.BAD_GATEWAY, code)))
+                .doOnError(error -> log.warn("[MessageUcoLab] {}", code, error));
+    }
+
+    private MessageDetails applyVars(MessageDetails details, Map<String, String> vars) {
+        if (vars == null || vars.isEmpty()) return details;
+        return new MessageDetails(
+                details.code(),
+                details.sourceLanguage(),
+                details.targetLanguage(),
+                MessageCatalog.format(details.title(), vars),
+                MessageCatalog.format(details.content(), vars),
+                details.type(),
+                details.category(),
+                details.functionality(),
+                details.createdAt(),
+                details.updatedAt()
         );
-        return ResolvedMessage.fallback(code, fb.title(), fb.content(), errorMsg);
     }
 
     private ResolvedMessage applyVars(ResolvedMessage msg, Map<String, String> vars) {

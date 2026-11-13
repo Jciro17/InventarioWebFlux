@@ -3,9 +3,10 @@ package co.edu.uco.inventario.service;
 import co.edu.uco.inventario.messages.MessageUcoLabClient;
 import co.edu.uco.inventario.messages.ResolvedMessage;
 import co.edu.uco.inventario.model.Producto;
-import co.edu.uco.messageucolab.client.api.MessageReader;
 import co.edu.uco.messageucolab.client.api.model.MessageDetails;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -19,11 +20,9 @@ public class InventarioService {
 
     private final MessageUcoLabClient msgClient;
     private final List<Producto> productos = new CopyOnWriteArrayList<>();
-    private final MessageReader mesaReader;
 
-    public InventarioService(MessageUcoLabClient msgClient, MessageReader mesaReader) {
+    public InventarioService(MessageUcoLabClient msgClient) {
         this.msgClient = msgClient;
-        this.mesaReader = mesaReader;
         productos.add(new Producto("Mouse inalámbrico",  "MOUSE-001", 12, 5));
         productos.add(new Producto("Teclado mecánico",   "TECLADO-002", 3, 5));
         productos.add(new Producto("Monitor 24\"",        "MONITOR-003", 0, 2));
@@ -41,16 +40,15 @@ public class InventarioService {
     }
 
     public Mono<MessageDetails> guardar(Producto producto) {
-        if (esInvalido(producto)) return mesaReader.getDetails("MSG_INVALID");
+        if (esInvalido(producto)) return msgClient.getFreshDetails("MSG_INVALID", Map.of());
         productos.add(producto);
-        return mesaReader.getDetails("MSG_PRODSAVED");
+        return msgClient.getFreshDetails("MSG_PRODSAVED", Map.of("nombre", producto.getNombre()));
     }
 
     public Mono<ResolvedMessage> actualizar(String id, Producto datos) {
         if (esInvalido(datos)) return msgClient.get("MSG_INVALID");
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
-                "El producto con id " + id + " no existe.", "fallback"));
+        if (found.isEmpty()) return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND));
         Producto p = found.get();
         p.setNombre(datos.getNombre());
         p.setSku(datos.getSku());
@@ -61,8 +59,7 @@ public class InventarioService {
 
     public Mono<ResolvedMessage> eliminar(String id) {
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
-                "El producto con id " + id + " no existe.", "fallback"));
+        if (found.isEmpty()) return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND));
         Producto p = found.get();
         productos.removeIf(x -> x.getId().equals(id));
         return msgClient.get("MSG_PRODDEL", Map.of("nombre", p.getNombre()));
@@ -70,8 +67,7 @@ public class InventarioService {
 
     public Mono<ResolvedMessage> salida(String id, int cantidad) {
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
-                "El producto no existe.", "fallback"));
+        if (found.isEmpty()) return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND));
         Producto p = found.get();
         if (p.getCantidad() < cantidad) {
             return msgClient.get("MSG_NOSTOCK", Map.of("nombre", p.getNombre()));
@@ -86,8 +82,7 @@ public class InventarioService {
 
     public Mono<ResolvedMessage> entrada(String id, int cantidad) {
         Optional<Producto> found = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
-        if (found.isEmpty()) return Mono.just(new ResolvedMessage(id, "No encontrado",
-                "El producto no existe.", "fallback"));
+        if (found.isEmpty()) return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND));
         Producto p = found.get();
         p.setCantidad(p.getCantidad() + cantidad);
         return msgClient.get("MSG_PRODUPD", Map.of("nombre", p.getNombre()));

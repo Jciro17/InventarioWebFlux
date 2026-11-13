@@ -1,6 +1,6 @@
 # Inventario UCO — API
 
-API REST de gestión de inventario en **Spring Boot WebFlux** (Java 17) integrada con MessageUcoLab.
+API REST de gestión de inventario en **Spring Boot WebFlux** (Java 25) integrada con MessageUcoLab.
 Es la aplicación de ejemplo de la guía de integración de MessageUcoLab. La pantalla está en
 [InventarioWebFlux-Frontend](https://github.com/Jciro17/InventarioWebFlux-Frontend).
 
@@ -13,30 +13,58 @@ Es la aplicación de ejemplo de la guía de integración de MessageUcoLab. La pa
 
 | Pieza | Para qué sirve |
 |---|---|
-| `messages/MessageUcoLabClient.java` | Pide cada mensaje a la ruta pública `GET /messageucolab/v1/public/messages/{código}` con los encabezados `X-Application-Id` y `X-Environment-Id`. Guarda en caché y, si MessageUcoLab falla, usa el texto de respaldo; nunca lanza una excepción |
+| `messages/MessageUcoLabClient.java` | Pide cada mensaje a `GET /messageucolab/v1/messages/consumer` con el token de la identidad de servicio. Guarda en caché y, si MessageUcoLab falla, usa el texto de respaldo; nunca lanza una excepción |
 | `messages/MessageCatalog.java` | Textos de respaldo de cada código (`MSG_PRODSAVED`, `MSG_STOCKLOW`, …) |
+| `GET /api/mensajes/{code}` | Entrega el texto de un mensaje ya resuelto: el front de Inventario lo pide aquí y no llama a MessageUcoLab |
 | `GET /api/mensajes/estado` | Dice si cada mensaje viene de MessageUcoLab o del respaldo (botón **Comprobar conexión** de la pantalla) |
 | `POST /api/mensajes/limpiar-cache` | Vacía la caché para volver a pedir los textos |
 
 Cada respuesta de la API trae el texto listo para mostrar: `{ code, title, content, source, error }`,
 donde `source` es `api` (MessageUcoLab) o `fallback` (respaldo).
 
+## Requisitos
+
+- **Java 25** y **Maven** (`mvn`) en el PATH.
+- Tu `settings.xml` de Maven con un `<server>` para cada uno de estos dos `<id>` y un token de GitHub con el
+  permiso `read:packages`: `github-messageucolab` y `github-seguridad`. Con ellos Maven descarga el cliente de
+  MessageUcoLab y el starter de seguridad.
+- MessageUcoLab y el componente de seguridad levantados.
+
+## Configurar tus secretos
+
+Inventario consume MessageUcoLab con una **identidad de servicio**. MessageUcoLab deduce la aplicación y el
+ambiente del token, así que **no se configuran identificadores de aplicación ni de ambiente**.
+
+1. En la consola de seguridad crea la identidad (**Identidades de servicio → Crear identidad**) y copia su
+   Client ID y su secreto.
+2. Pide el permiso de consumo (**Solicitar acceso**, rol `MESSAGE_CONSUMER`) y que lo aprueben.
+3. Pide al propietario de la aplicación que asocie tu Client ID a un ambiente en MessageUcoLab
+   (**Identidades de servicio**).
+4. En esta carpeta, copia `.env.example` con el nombre `.env`:
+
+   ```bat
+   copy .env.example .env
+   ```
+
+5. Abre `.env` y reemplaza los valores vacíos:
+
+   | Variable | Qué poner |
+   |---|---|
+   | `MESSAGEUCOLAB_CLIENT_ID` | El Client ID del paso 1 (empieza por `svc-`) |
+   | `MESSAGEUCOLAB_CLIENT_SECRET` | El secreto del paso 1 |
+   | `MESSAGEUCOLAB_URL` | La dirección de MessageUcoLab; por defecto `http://localhost:8000` (Kong) |
+
+El archivo `.env` está en `.gitignore`: **no se sube a Git**. Si prefieres guardar los secretos en Doppler,
+en variables del sistema u otro gestor, define esas mismas variables y salta el `.env`.
+
 ## Ejecutar
 
-Inventario consume MessageUcoLab con su identidad de servicio. Crea la identidad en el componente de
-seguridad, pide acceso a las rutas de consumo y pide al propietario en MessageUcoLab que asocie su
-Client ID al ambiente (**Identidades de servicio**). MessageUcoLab deduce la aplicación y el ambiente del
-token, así que no se configuran identificadores. El Client ID y el secreto llegan por variables de entorno,
-nunca en un archivo versionado:
-
 ```bat
-set MESSAGEUCOLAB_CLIENT_ID=<client id de la identidad>
-set MESSAGEUCOLAB_CLIENT_SECRET=<secreto de la identidad>
 run.bat
 ```
 
-La API queda en `http://localhost:8081/api`. MessageUcoLab se busca en `http://localhost:8000` (Kong);
-si está en otra dirección, define `MESSAGEUCOLAB_BACKEND`.
+`run.bat` carga el `.env`, comprueba que el Client ID y el secreto no estén vacíos y arranca la API. Queda en
+`http://localhost:8081/api`.
 
 | Método | Ruta | Qué hace |
 |---|---|---|
@@ -46,5 +74,6 @@ si está en otra dirección, define `MESSAGEUCOLAB_BACKEND`.
 | DELETE | `/api/productos/{id}` | Elimina un producto |
 | POST | `/api/productos/{id}/entrada?cantidad=N` | Registra una entrada |
 | POST | `/api/productos/{id}/salida?cantidad=N` | Registra una salida |
+| GET | `/api/mensajes/{code}` | Texto resuelto de un mensaje |
 | GET | `/api/mensajes/estado` | Origen de cada mensaje |
 | POST | `/api/mensajes/limpiar-cache` | Vacía la caché de mensajes |

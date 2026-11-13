@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Escucha los avisos que MessageUcoLab publica cuando cambia un mensaje del ambiente que consume
- * este backend y los convierte en notificaciones para las pantallas conectadas.
+ * este backend (el ambiente asociado a su identidad de servicio) y los convierte en notificaciones para las pantallas conectadas.
  */
 @Component
 public class MessageChangeListener {
@@ -35,21 +35,23 @@ public class MessageChangeListener {
             PulsarClient client,
             MessageReader messageReader,
             AvisosEnTiempoReal avisos,
-            @Value("${messageucolab.environment-id:}") String environmentId,
+            @Value("${security.pep.service-identity.client-id:}") String clientId,
             @Value("${messageucolab.events-topic-prefix:persistent://public/default/message-events}") String prefix,
             @Value("${messageucolab.subscription-name:inventario-webflux}") String subscriptionName) {
 
         this.messageReader = messageReader;
         this.avisos = avisos;
 
-        // Sin ambiente no hay topic al que suscribirse. La aplicación arranca igual: solo se pierden los avisos.
-        if (environmentId.isBlank()) {
-            log.warn("No se escuchan avisos de MessageUcoLab: falta messageucolab.environment-id "
-                    + "(variable MESSAGEUCOLAB_ENVIRONMENT_ID)");
+        // El topic es el del client_id de la identidad de servicio de Inventario. MessageUcoLab publica ahí los
+        // avisos del ambiente al que está asociada esa identidad (Identidades de servicio de su pantalla), así que
+        // no hay que configurar el id del ambiente. Sin identidad la aplicación arranca igual: solo no hay avisos.
+        if (clientId.isBlank()) {
+            log.warn("No se escuchan avisos de MessageUcoLab: falta el client_id de la identidad de servicio "
+                    + "(variable MESSAGEUCOLAB_CLIENT_ID)");
             this.consumer = CompletableFuture.completedFuture(null);
             return;
         }
-        String topic = prefix + "-" + environmentId;
+        String topic = prefix + "-" + clientId;
 
         // subscribeAsync: si Pulsar no está disponible el backend arranca igual y se registra el error.
         this.consumer = client.newConsumer(Schema.STRING)

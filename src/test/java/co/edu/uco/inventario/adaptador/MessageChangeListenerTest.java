@@ -68,8 +68,8 @@ class MessageChangeListenerTest {
     }
 
     @Test
-    @DisplayName("sin ambiente no crea un consumidor Pulsar")
-    void constructor_shouldSkipSubscriptionWithoutEnvironment() {
+    @DisplayName("sin client_id no crea un consumidor Pulsar")
+    void constructor_shouldSkipSubscriptionWithoutClientId() {
         listener = new MessageChangeListener(pulsarClient, messageReader, avisos,
                 "", "persistent://test/events", "test-subscription");
 
@@ -96,7 +96,7 @@ class MessageChangeListenerTest {
 
         verify(messageReader).getDetails("MSG_NEW");
         verify(consumer).acknowledgeAsync(pulsarMessage);
-        verify(consumerBuilder).topic("persistent://test/events-env-1");
+        verify(consumerBuilder).topic("persistent://test/events-svc-app-inventario-test");
     }
 
     @Test
@@ -147,7 +147,7 @@ class MessageChangeListenerTest {
         when(consumerBuilder.subscribeAsync()).thenReturn(CompletableFuture.completedFuture(consumer));
         when(consumer.closeAsync()).thenReturn(CompletableFuture.completedFuture(null));
         listener = new MessageChangeListener(pulsarClient, messageReader, avisos,
-                "env-1", "persistent://test/events", "test-subscription");
+                "svc-app-inventario-test", "persistent://test/events", "test-subscription");
         ArgumentCaptor<MessageListener<String>> callback = (ArgumentCaptor) ArgumentCaptor.forClass(MessageListener.class);
         verify(consumerBuilder).messageListener(callback.capture());
         verify(consumerBuilder).subscriptionName("test-subscription");

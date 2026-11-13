@@ -8,10 +8,8 @@ spring:
 # Cliente de MessageUcoLab. La aplicación y el ambiente los deduce MessageUcoLab del client_id de la identidad.
 messageucolab:
   url: ${MESSAGEUCOLAB_URL:http://localhost:8000}
-  # Id del ambiente que consume esta aplicación. Las consultas no lo necesitan (MessageUcoLab lo deduce del
-  # token), pero el topic de avisos lleva ese id en el nombre. Sin él no se escuchan avisos.
-  environment-id: ${MESSAGEUCOLAB_ENVIRONMENT_ID:bce1efce-1a93-4629-b289-7e0ee94fa88f}
-  # Prefijo del topic de avisos; el topic final es <prefijo>-<environment-id>.
+  # Prefijo del topic de avisos. El topic final es <prefijo>-<client_id de la identidad de servicio>: MessageUcoLab
+  # publica ahí solo los avisos del ambiente asociado a esa identidad, sin configurar el id del ambiente.
   events-topic-prefix: ${MESSAGEUCOLAB_EVENTS_TOPIC_PREFIX:persistent://public/default/message-events}
   # La suscripción es Exclusive: cada instancia que corra a la vez necesita un nombre distinto.
   subscription-name: ${MESSAGEUCOLAB_SUBSCRIPTION_NAME:inventario-webflux}

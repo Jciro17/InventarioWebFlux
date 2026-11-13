@@ -2,8 +2,6 @@ package co.edu.uco.inventario.adaptador;
 
 import co.edu.uco.inventario.model.Aviso;
 import co.edu.uco.messageucolab.client.api.MessageReader;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -14,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -26,7 +26,7 @@ public class MessageChangeListener {
 
     private static final Logger log = LoggerFactory.getLogger(MessageChangeListener.class);
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final JsonMapper mapper = JsonMapper.builder().build();
     private final MessageReader messageReader;
     private final AvisosEnTiempoReal avisos;
     private final CompletableFuture<Consumer<String>> consumer;
@@ -35,12 +35,20 @@ public class MessageChangeListener {
             PulsarClient client,
             MessageReader messageReader,
             AvisosEnTiempoReal avisos,
-            @Value("${messageucolab.environment-id}") String environmentId,
+            @Value("${messageucolab.environment-id:}") String environmentId,
             @Value("${messageucolab.events-topic-prefix:persistent://public/default/message-events}") String prefix,
             @Value("${messageucolab.subscription-name:inventario-webflux}") String subscriptionName) {
 
         this.messageReader = messageReader;
         this.avisos = avisos;
+
+        // Sin ambiente no hay topic al que suscribirse. La aplicación arranca igual: solo se pierden los avisos.
+        if (environmentId.isBlank()) {
+            log.warn("No se escuchan avisos de MessageUcoLab: falta messageucolab.environment-id "
+                    + "(variable MESSAGEUCOLAB_ENVIRONMENT_ID)");
+            this.consumer = CompletableFuture.completedFuture(null);
+            return;
+        }
         String topic = prefix + "-" + environmentId;
 
         // subscribeAsync: si Pulsar no está disponible el backend arranca igual y se registra el error.
@@ -107,6 +115,7 @@ public class MessageChangeListener {
 
     @PreDestroy
     void close() {
-        consumer.thenCompose(Consumer::closeAsync).exceptionally(error -> null);
+        consumer.thenCompose(c -> c == null ? CompletableFuture.<Void>completedFuture(null) : c.closeAsync())
+                .exceptionally(error -> null);
     }
 }

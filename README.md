@@ -69,16 +69,16 @@ Se conserva la integración de Pulsar 3.2.2 y el canal SSE que llegaron en `orig
 independientes del cliente oficial HTTP `0.1.2`. No se incorpora el cliente experimental de eventos.
 
 - `PULSAR_URL` configura la dirección del broker (por defecto `pulsar://localhost:6800`).
-- `MESSAGEUCOLAB_ENVIRONMENT_ID` identifica el ambiente cuyo topic se escucha; debe corresponder al
-  de la identidad de servicio. Solo se usa para los avisos: las consultas HTTP siguen deduciendo el
-  ambiente de la identidad. Si el valor configurado queda vacío, el listener no se suscribe.
-- `MESSAGEUCOLAB_EVENTS_TOPIC_PREFIX` configura el prefijo del topic; el nombre final es
-  `<prefijo>-<environment-id>`.
+- El listener se suscribe al topic `<prefijo>-<client_id>`, con el `MESSAGEUCOLAB_CLIENT_ID` de la
+  identidad de servicio. MessageUcoLab publica en ese topic solo los avisos del ambiente al que está
+  asociada la identidad (**Identidades de servicio** en su pantalla). **No se configura el id del
+  ambiente**: si la identidad se asocia a otro ambiente, los avisos la siguen. Sin client_id no hay
+  suscripción.
+- `MESSAGEUCOLAB_EVENTS_TOPIC_PREFIX` configura el prefijo del topic.
 - `MESSAGEUCOLAB_SUBSCRIPTION_NAME` identifica la suscripción, que es `Exclusive`: cada instancia
-  simultánea necesita un nombre distinto.
+  simultánea con la misma identidad necesita un nombre distinto.
 - `GET /api/avisos` emite eventos SSE `aviso` con `{ title, content }` y `latido` cada diez segundos.
-  No guarda historial. El consumidor de ese canal debe estar implementado en la aplicación que lo usa;
-  esta integración no modifica el frontend.
+  No guarda historial. La pantalla de Inventario lo escucha y muestra cada aviso como notificación.
 
 Los avisos vuelven a consultar el título vigente mediante `MessageReader`, pero no invalidan la caché
 de `MessageUcoLabClient`: para esa caché se conservan el TTL y `/api/mensajes/limpiar-cache`.

@@ -19,18 +19,21 @@
 
     <properties>
         <java.version>25</java.version>
-        <messageucolab-client.version>0.1.0-SNAPSHOT</messageucolab-client.version>
+        <messageucolab-client.version>0.1.2</messageucolab-client.version>
         <security-pep-starter.version>0.1.4</security-pep-starter.version>
+        <!-- Spring Boot 4.1.x gestiona Pulsar 4.2.x y obliga pulsar-client-api y pulsar-client-admin-api a esa
+             versión, mientras que pulsar-client queda en 3.2.2. Se alinea todo a la versión del broker. -->
+        <pulsar.version>3.2.2</pulsar.version>
     </properties>
 
     <!-- Las credenciales de lectura de GitHub Packages van en settings.xml, nunca en el POM. -->
     <repositories>
         <repository>
-            <id>github-messageucolab</id>
+            <id>github</id>
             <url>https://maven.pkg.github.com/CamiloGarcia09/MessageUcolab--Backend</url>
         </repository>
         <repository>
-            <id>github-seguridad</id>
+            <id>github</id>
             <url>https://maven.pkg.github.com/seguridad-uco/securitybaseline</url>
         </repository>
     </repositories>
@@ -40,13 +43,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
-        <!-- Cliente de MessageUcoLab: MessageReader y las rutas de consumo. -->
         <dependency>
             <groupId>co.edu.uco</groupId>
             <artifactId>messageucolab-spring-boot-starter</artifactId>
             <version>${messageucolab-client.version}</version>
         </dependency>
-        <!-- Starter de seguridad: entrega el token de la identidad de servicio de Inventario. -->
         <dependency>
             <groupId>co.edu.uco</groupId>
             <artifactId>security-pep-integration-spring-boot-starter</artifactId>
@@ -62,6 +63,17 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.pulsar</groupId>
+            <artifactId>pulsar-client</artifactId>
+            <!-- Sin versión: la fija la propiedad pulsar.version (3.2.2, la del broker). -->
+        </dependency>
+        <!-- Jackson 3 (el de Spring Boot 4) para leer los avisos de Pulsar. Declarado de forma explícita para no
+             depender de que llegue por otra dependencia ni de las clases internas de Pulsar. -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -69,6 +81,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
             </plugin>
         </plugins>
     </build>

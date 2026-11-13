@@ -3,6 +3,8 @@ package co.edu.uco.inventario.service;
 import co.edu.uco.inventario.messages.MessageUcoLabClient;
 import co.edu.uco.inventario.messages.ResolvedMessage;
 import co.edu.uco.inventario.model.Producto;
+import co.edu.uco.messageucolab.client.api.MessageReader;
+import co.edu.uco.messageucolab.client.api.model.MessageDetails;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -17,9 +19,11 @@ public class InventarioService {
 
     private final MessageUcoLabClient msgClient;
     private final List<Producto> productos = new CopyOnWriteArrayList<>();
+    private final MessageReader mesaReader;
 
-    public InventarioService(MessageUcoLabClient msgClient) {
+    public InventarioService(MessageUcoLabClient msgClient, MessageReader mesaReader) {
         this.msgClient = msgClient;
+        this.mesaReader = mesaReader;
         productos.add(new Producto("Mouse inalámbrico",  "MOUSE-001", 12, 5));
         productos.add(new Producto("Teclado mecánico",   "TECLADO-002", 3, 5));
         productos.add(new Producto("Monitor 24\"",        "MONITOR-003", 0, 2));
@@ -36,10 +40,10 @@ public class InventarioService {
         );
     }
 
-    public Mono<ResolvedMessage> guardar(Producto producto) {
-        if (esInvalido(producto)) return msgClient.get("MSG_INVALID");
+    public Mono<MessageDetails> guardar(Producto producto) {
+        if (esInvalido(producto)) return mesaReader.getDetails("MSG_INVALID");
         productos.add(producto);
-        return msgClient.get("MSG_PRODSAVED", Map.of("nombre", producto.getNombre()));
+        return mesaReader.getDetails("MSG_PRODSAVED");
     }
 
     public Mono<ResolvedMessage> actualizar(String id, Producto datos) {

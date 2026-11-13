@@ -8,6 +8,17 @@ spring:
 # Cliente de MessageUcoLab. La aplicación y el ambiente los deduce MessageUcoLab del client_id de la identidad.
 messageucolab:
   url: ${MESSAGEUCOLAB_URL:http://localhost:8000}
+  # Id del ambiente que consume esta aplicación. Las consultas no lo necesitan (MessageUcoLab lo deduce del
+  # token), pero el topic de avisos lleva ese id en el nombre. Sin él no se escuchan avisos.
+  environment-id: ${MESSAGEUCOLAB_ENVIRONMENT_ID:bce1efce-1a93-4629-b289-7e0ee94fa88f}
+  # Prefijo del topic de avisos; el topic final es <prefijo>-<environment-id>.
+  events-topic-prefix: ${MESSAGEUCOLAB_EVENTS_TOPIC_PREFIX:persistent://public/default/message-events}
+  # La suscripción es Exclusive: cada instancia que corra a la vez necesita un nombre distinto.
+  subscription-name: ${MESSAGEUCOLAB_SUBSCRIPTION_NAME:inventario-webflux}
+
+pulsar:
+  # Puerto publicado de Pulsar en el host (PULSAR_PORT en Doppler). Aquí es 6800 -> 6650 del contenedor.
+  service-url: ${PULSAR_URL:pulsar://localhost:6800}
 
 security:
   # Esta demo no protege sus propias rutas con el PEP; solo consume MessageUcoLab.
@@ -17,10 +28,14 @@ security:
     service-identity:
       enabled: true
       token-uri: ${KEYCLOAK_TOKEN_URI:http://keycloak.localhost:19090/realms/security-baseline/protocol/openid-connect/token}
-      client-id: ${MESSAGEUCOLAB_CLIENT_ID:}
-      client-secret: ${MESSAGEUCOLAB_CLIENT_SECRET:}
+      client-id: ${MESSAGEUCOLAB_CLIENT_ID:svc-403c6cfc-8f89-4299-87e4-a53ef72228fc-miapp-a-messageucolab-dev}
+      client-secret: ${MESSAGEUCOLAB_CLIENT_SECRET:2BzjPE0ViOOWxfeAUew3N1o3aJG1x9i_Mz03z5FjR9c}
 
 logging:
   level:
     co.edu.uco: DEBUG
     org.springframework.web.reactive: WARN
+
+
+
+

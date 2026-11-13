@@ -5,6 +5,7 @@ import co.edu.uco.inventario.messages.MessageUcoLabClient;
 import co.edu.uco.inventario.messages.ResolvedMessage;
 import co.edu.uco.inventario.model.Producto;
 import co.edu.uco.inventario.service.InventarioService;
+import co.edu.uco.messageucolab.client.api.model.MessageDetails;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -35,7 +36,7 @@ public class InventarioController {
     }
 
     @PostMapping("/productos")
-    public Mono<ResolvedMessage> crear(@RequestBody Producto producto) {
+    public Mono<MessageDetails> crear(@RequestBody Producto producto) {
         return inventarioService.guardar(producto);
     }
 
